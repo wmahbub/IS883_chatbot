@@ -8,7 +8,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 from google.cloud import datastore
 
 
-def webhook(request): #git push test
+def webhook(request): #git push test test
 
     # get request body
     req = request.get_json(force=True)
