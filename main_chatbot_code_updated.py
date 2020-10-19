@@ -7,6 +7,7 @@ from googleapiclient.discovery import build
 from oauth2client.service_account import ServiceAccountCredentials
 from google.cloud import datastore
 import random
+import smtplib
 
 
 def webhook(request):
@@ -51,24 +52,9 @@ def welcome(req):
     logging.info(req['queryResult']['parameters'])
 
     return 'welcome intent'
-"""
-def weather_forecast():
     
-    weather= ['sunny', 'cloudy','windy', 'rainy', 'cold']
-    temp_low= random.randint(4,15)
-    temp_high= random.randint(16,22)
-    temp_mean= random.randint(10,20)
     
-    message= {'sunny': 'Remember to wear a hat!', 'cloudy': "Remember to take an umbrella just in case.", 'windy':'Wear a vest as it does get cold here.',
-              'rainy': 'Remember to take a strong umbrella!', 'cold': 'Wear a jacket.'}
-    
-    a= random.choice(weather)
-    b= message[a]
-    
-    return 'Forecast: It is expected to be ' + a + ' today. ' + b  + ' High: '+ str(temp_high)+ 'C' + ' Low: ' + str(temp_low) + 'C' + ' Mean: ' + str(temp_mean) + 'C'
-    """
-    
-def createCalenderEvent(date, time, location, userid):
+def createCalenderEvent(date, time, location, userid, reciever_email):
     
     # modify to your calender id
     calenderID = 'c_b57e1k1qnifqunarr52dlg2484@group.calendar.google.com'
@@ -124,8 +110,8 @@ def createCalenderEvent(date, time, location, userid):
     
     weather= ['sunny', 'cloudy','windy', 'rainy', 'cold']
     temp_low= random.randint(4,15)
-    temp_high= random.randint(16,22)
-    temp_mean= random.randint(10,20)
+    temp_high= random.randint(temp_low+5,25)
+    temp_mean= random.randint(temp_low+1,temp_high-1)
     
     message= {'sunny': 'Remember to wear a hat!', 'cloudy': "Remember to take an umbrella just in case.", 'windy':'Wear a vest as it does get cold here.',
               'rainy': 'Remember to take a strong umbrella!', 'cold': 'Wear a jacket.'}
@@ -148,7 +134,7 @@ def createCalenderEvent(date, time, location, userid):
         
     # create new calendar event
     event = {
-        'summary': 'Coffee chat with ' + str(userid),
+        'summary': 'Coffee Chat with ' + str(userid),
         'location':  location_actual,
         'description': 'You have scheduled a coffee chat with ' + str(userid) + ' at ' + str(location) + '. ' + str(forecast),
         'start': {
@@ -167,7 +153,32 @@ def createCalenderEvent(date, time, location, userid):
     event = service.events().insert(calendarId=calenderID, body=event).execute()
     
     response = 'You\'re all set for {} at {},'.format(date, time) + ' event link: %s' % (event.get('htmlLink'))
+   
+   
+    #E-mail notification for my account
+    sender_name= '###' #Sender's name
+    sender_email= '###@bu.edu' #sender 
+    password= '#######################' #Remove Password after use
+    """
+    message = 'Subject: {}\n\n{}'.format('Coffee Chat with '+ str(userid) , 'Hi ' +str(sender_name)+',' + ' This is to confirm that you have made a coffee chat invite. ' + 'Here is the event link: %s .' % (event.get('htmlLink')))
+
+    server= smtplib.SMTP('smtp.gmail.com', port= 587 )
+    server.starttls()
+    server.login(sender_email, password)
+    server.sendmail(sender_email, sender_email, message)
+    """
     
+    #E-mail notification for my guest
+    message = 'Subject: {}\n\n{}'.format('Coffee Chat with '+ str(sender_name) , 'Hi ' +str(userid)+'!' + ' This is to confirm that you have a coffee chat invite. ' + 'Here is the event link: %s .' % (event.get('htmlLink')))
+
+    server= smtplib.SMTP('smtp.gmail.com', port= 587 )
+    server.starttls()
+    server.login(sender_email, password)
+    server.sendmail(sender_email, reciever_email, message)
+    
+    server.quit()
+    
+
     return response
 
 def make_appointment(req):   # old function, do not use!!!!
@@ -213,15 +224,16 @@ def invite_to_meeting(req): # our wbhook function
                 
     logging.info(str(params))
     
-    # extract date, time from datetimes
+    # extract date, time from datetimes and extract values from variables
     date = params['date'].split('T')[0]
     time = params['time'].split('T')[1].split('-')[0]
     location = params['coffee_shop.original']
     userid = params['name.original']
+    reciever_email = params['email.original']
     
     
     # call function that will check for collisions and create entry
-    response = createCalenderEvent(date, time, location, userid)
+    response = createCalenderEvent(date, time, location, userid, reciever_email)
         
     return response
 
